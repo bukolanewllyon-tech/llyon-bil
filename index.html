@@ -2366,11 +2366,12 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
   const coverageTextColor = coveragePct >= 80 ? "#7fddaa" : coveragePct >= 50 ? "#e8a820" : "#ff8060";
 
   const navStyle = (id) => ({
-    background: view === id ? "#3a2800" : "none",
-    border: `1px solid ${view === id ? "#7a5000" : "#1e1a14"}`,
-    color: view === id ? "#e8a820" : "#5a4030",
-    borderRadius: 6, padding: "7px 16px", cursor: "pointer",
-    fontSize: 12, fontWeight: 700, letterSpacing: 0.3, transition: "all 0.15s",
+    background: view === id ? "#6CBF2E" : "rgba(255,255,255,0.08)",
+    border: `1px solid ${view === id ? "#6CBF2E" : "#2A5E18"}`,
+    color: view === id ? "#1A3D10" : "#8DD44A",
+    borderRadius: 6, padding: "6px 12px", cursor: "pointer",
+    fontSize: 11, fontWeight: 700, letterSpacing: 0.2, transition: "all 0.15s",
+    whiteSpace: "nowrap",
   });
 
   const sel = { background: "#F4F4F0", border: "1px solid #D8D8CE", color: "#3D8A20", borderRadius: 6, padding: "7px 10px", fontSize: 12 };
@@ -2378,54 +2379,49 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
   return (
     <div style={{ minHeight: "100vh", background: "#F4F4F0", color: "#8A8A7A", fontFamily: "'DM Serif Display', Georgia, serif", paddingBottom: 60 }}>
 
-      {/* Header */}
-      <div style={{ background: darkMode ? "#1A3D10" : "#1A3D10", borderBottom: "2px solid #6CBF2E", padding: "14px 20px 12px", position: "sticky", top: 0, zIndex: 100 }}>
+      {/* Header — mobile optimised */}
+      <div style={{ background: "#1A3D10", borderBottom: "2px solid #6CBF2E", padding: "10px 16px 8px", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <img src={LOGO_WHITE} alt="Newllyon Limited" style={{ height: 32, width: "auto" }} />
-              <div style={{ width: "1px", height: 28, background: "#2A5E18" }} />
-              <div>
-                <div style={{ color: "#8DD44A", fontSize: 9, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>Llyon Farms · {activeUser === "bukola" ? "Bukola Aluko" : "Talatu"}</div>
-                <div style={{ color: "#EBF7D8", fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 16, fontWeight: 400, letterSpacing: -0.3, lineHeight: 1.2 }}>Business Impact Log</div>
+
+          {/* Row 1: Logo + user + actions */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+
+            {/* Left: logo + identity */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, flex: 1 }}>
+              <img src={LOGO_WHITE} alt="Newllyon Limited" style={{ height: 28, width: "auto", flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ color: "#8DD44A", fontSize: 8, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                  Llyon Farms · {activeUser === "bukola" ? "Bukola Aluko" : "Talatu"}
+                </div>
+                <div style={{ color: "#EBF7D8", fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 14, lineHeight: 1.2, whiteSpace: "nowrap" }}>
+                  Business Impact Log
+                </div>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {/* User switcher — preview mode */}
-              <div style={{ display: "flex", gap: 4, background: "#0e2a0e", border: "1px solid #2A5E18", borderRadius: 8, padding: 3 }}>
-                {["bukola", "talatu"].map(u => (
-                  <button
-                    key={u}
-                    onClick={() => setActiveUser(u)}
-                    style={{
-                      background: activeUser === u ? "#6CBF2E" : "none",
-                      border: "none",
-                      color: activeUser === u ? "#1A3D10" : "#8DD44A",
-                      borderRadius: 6, padding: "4px 10px",
-                      cursor: "pointer", fontSize: 11, fontWeight: 700,
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {u === "bukola" ? "Bukola" : "Talatu"}
-                  </button>
-                ))}
-              </div>
+
+            {/* Right: dark toggle + log entry */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: 8 }}>
               <button
                 onClick={onToggleDark}
-                style={{ background: "none", border: "1px solid #2A5E18", color: "#8DD44A", borderRadius: 6, padding: "5px 10px", cursor: "pointer", fontSize: 11 }}
-                title="Toggle dark/light mode"
+                style={{ background: "none", border: "1px solid #2A5E18", color: "#8DD44A", borderRadius: 6, padding: "5px 8px", cursor: "pointer", fontSize: 10, whiteSpace: "nowrap" }}
               >
-                {darkMode ? "☀ Light" : "◑ Dark"}
+                {darkMode ? "☀" : "◑"}
+              </button>
+              <button
+                onClick={onLogout}
+                style={{ background: "none", border: "1px solid #2A5E18", color: "#8DD44A", borderRadius: 6, padding: "5px 8px", cursor: "pointer", fontSize: 10 }}
+              >
+                ⎋
               </button>
               <button
                 onClick={() => { setEditEntry(null); setShowForm(true); }}
-                style={{ background: "#6CBF2E", border: "none", color: "#1A3D10", borderRadius: 7, padding: "9px 20px", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "Manrope, Arial, sans-serif" }}
+                style={{ background: "#6CBF2E", border: "none", color: "#1A3D10", borderRadius: 7, padding: "8px 14px", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "Manrope, Arial, sans-serif", whiteSpace: "nowrap" }}
               >
                 + Log Entry
               </button>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
             <button style={navStyle("log")} onClick={() => setView("log")}>📋 Log</button>
             <button style={navStyle("gaps")} onClick={() => setView("gaps")}>
               ◉ Gaps {gapCount > 0 ? <span style={{ background: "#7a2000", color: "#ffb080", borderRadius: 10, padding: "0px 6px", fontSize: 10, marginLeft: 4 }}>{gapCount}</span> : ""}
@@ -2581,20 +2577,7 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
         {view === "matrix" && <MatrixView activeUser={activeUser} />}
       </div>
 
-      {/* Preview banner */}
-      {activeUser === "talatu" && (
-        <div style={{
-          background: "#FBF0A0", border: "1px solid #F2D024",
-          borderRadius: 8, padding: "8px 16px", margin: "0 16px 0",
-          maxWidth: 900, marginLeft: "auto", marginRight: "auto",
-          display: "flex", alignItems: "center", gap: 10,
-        }}>
-          <span style={{ fontSize: 14 }}>👁</span>
-          <span style={{ color: "#2A1E00", fontSize: 12, fontWeight: 600, fontFamily: "Manrope, Arial, sans-serif" }}>
-            Preview Mode — Viewing as Talatu. Skills Tracker and Skills fields are not available in her experience.
-          </span>
-        </div>
-      )}
+
 
       {showForm && (
         <Modal onClose={() => { setShowForm(false); setEditEntry(null); setPrefilledArea(null); }} wide>
