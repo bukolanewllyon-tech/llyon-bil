@@ -127,6 +127,30 @@ async function dbSaveAppData(userId, key, value) {
   } catch(e) { console.error('Save app data:', e); }
 }
 
+
+async function dbLoadCompanyEvents() {
+  try {
+    const { data, error } = await supabase.from('company_events').select('*')
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(r => r.data);
+  } catch(e) { console.error('Load company events:', e); return []; }
+}
+async function dbSaveCompanyEvent(event) {
+  try {
+    const { error } = await supabase.from('company_events').upsert(
+      { id: event.id, data: event, updated_at: new Date().toISOString() }
+    );
+    if (error) throw error;
+  } catch(e) { console.error('Save company event:', e); }
+}
+async function dbDeleteCompanyEvent(eventId) {
+  try {
+    const { error } = await supabase.from('company_events').delete().eq('id', eventId);
+    if (error) throw error;
+  } catch(e) { console.error('Delete company event:', e); }
+}
+
 // ── AUTH ─────────────────────────────────────────────────────────────────────
 const USERS_CONFIG = {
   bukola: { name: "Bukola Aluko", initials: "BA", pinHash: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4", showSkills: true, color: "#6CBF2E" },
@@ -1736,6 +1760,16 @@ function ReportView({ entries, companyEntries = [], activeUser = "bukola", allCu
                 <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: "1px solid #1a1610" }}>
                   <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
                     <TypePill type={e.type} />
+                    {isCompany && (
+                      <span style={{
+                        background: e._isEvent ? "#F4F4F0" : e._userId === "bukola" ? "#EBF7D8" : "#FBF0A0",
+                        color: e._isEvent ? "#8A8A7A" : e._userId === "bukola" ? "#1A3D10" : "#2A1E00",
+                        border: `1px solid ${e._isEvent ? "#D8D8CE" : e._userId === "bukola" ? "#6CBF2E" : "#F2D024"}`,
+                        borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700,
+                      }}>
+                        {e._isEvent ? "🏢 Company Event" : e._userId === "bukola" ? "Bukola" : "Talatu"}
+                      </span>
+                    )}
                     <span style={{ color: "#D8D8CE", fontSize: 11 }}>{fmt(e.date)}</span>
                   </div>
                   <div style={{ color: "#1A3D10", fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
@@ -2078,6 +2112,236 @@ function GapTrackerView({ entries, onLogForArea, activeUser = "bukola" }) {
 
 // ─── SKILLS TRACKER VIEW ─────────────────────────────────────────────────────
 
+
+// ─── COMPANY EVENTS VIEW ──────────────────────────────────────────────────────
+
+const COMPANY_EVENT_TYPES = ["Farm Event", "Market Event", "Team Milestone", "External Factor", "Context Note"];
+
+function CompanyEventForm({ initial, onSave, onClose }) {
+  const blank = {
+    id: uid(), date: today(), title: "", type: "Farm Event",
+    summary: "", metrics: "", strategicNotes: "", loggedBy: "",
+  };
+  const [form, setForm] = useState(initial || blank);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const tf = {
+    width: "100%", background: "var(--bg-input)", border: "1px solid var(--border)",
+    color: "var(--text-primary)", borderRadius: 6, padding: "8px 12px", fontSize: 13,
+    fontFamily: "Manrope, Arial, sans-serif", boxSizing: "border-box", marginTop: 4, resize: "vertical",
+  };
+  const lbl = { color: "var(--text-secondary)", fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase" };
+
+  const handleSave = () => {
+    if (!form.title.trim()) { alert("Please add a title."); return; }
+    onSave(form);
+    onClose();
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <h2 style={{ color: "var(--text-heading)", fontFamily: "'DM Serif Display', Georgia, serif", margin: 0, fontSize: 18 }}>
+          {initial ? "Edit Company Event" : "Log Company Event"}
+        </h2>
+        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 20, cursor: "pointer" }}>✕</button>
+      </div>
+
+      <div style={{ background: "#FBF0A0", border: "1px solid #F2D024", borderRadius: 8, padding: "8px 14px", marginBottom: 16, fontSize: 11, color: "#2A1E00" }}>
+        Company Events are not attributed to either founder. Use for farm outputs, market shifts, team milestones, or any business impact that happened independently of a specific founder action.
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+        <div>
+          <div style={lbl}>Date</div>
+          <input type="date" value={form.date} onChange={e => set("date", e.target.value)} style={{ ...tf, resize: "none" }} />
+        </div>
+        <div>
+          <div style={lbl}>Event Type</div>
+          <select value={form.type} onChange={e => set("type", e.target.value)} style={{ ...tf, resize: "none" }}>
+            {COMPANY_EVENT_TYPES.map(t => <option key={t}>{t}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={lbl}>Title *</div>
+        <input value={form.title} onChange={e => set("title", e.target.value)}
+          placeholder="e.g. Batch 2 harvest complete — 312kg yield"
+          style={{ ...tf, resize: "none" }} />
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={lbl}>Logged by (optional)</div>
+        <input value={form.loggedBy} onChange={e => set("loggedBy", e.target.value)}
+          placeholder="e.g. Farm manager, Bukola, Talatu"
+          style={{ ...tf, resize: "none" }} />
+      </div>
+
+      <div style={{ background: "var(--detail-bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 14, marginBottom: 14 }}>
+        <div style={{ color: "var(--text-secondary)", fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12 }}>Event Detail</div>
+        <div style={{ marginBottom: 10 }}>
+          <div style={lbl}>What happened?</div>
+          <textarea rows={3} value={form.summary} onChange={e => set("summary", e.target.value)}
+            placeholder="Describe what occurred, what caused it, and its immediate effect..." style={tf} />
+        </div>
+        <div style={{ marginBottom: 10 }}>
+          <div style={lbl}>Metrics</div>
+          <textarea rows={2} value={form.metrics} onChange={e => set("metrics", e.target.value)}
+            placeholder="Numbers, quantities, percentages, time..." style={tf} />
+        </div>
+        <div>
+          <div style={lbl}>Strategic Notes</div>
+          <textarea rows={2} value={form.strategicNotes} onChange={e => set("strategicNotes", e.target.value)}
+            placeholder="Why this matters to Llyon Farms — replication, investor proof, risk signal..." style={tf} />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <button onClick={onClose} style={{ background: "none", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 6, padding: "9px 20px", cursor: "pointer", fontSize: 13 }}>
+          Cancel
+        </button>
+        <button onClick={handleSave} style={{ background: "#6CBF2E", border: "none", color: "#1A3D10", borderRadius: 6, padding: "9px 26px", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+          Save Event
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CompanyEventsView({ events, onAdd, onEdit, onDelete }) {
+  const [search, setSearch] = useState("");
+  const [fType, setFType] = useState("ALL");
+
+  const filtered = events.filter(e => {
+    const q = search.toLowerCase();
+    const textOk = !q || e.title?.toLowerCase().includes(q) || e.summary?.toLowerCase().includes(q);
+    const typeOk = fType === "ALL" || e.type === fType;
+    return textOk && typeOk;
+  }).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+  const sel = {
+    background: "var(--bg-input)", border: "1px solid var(--border)",
+    color: "var(--text-secondary)", borderRadius: 6, padding: "7px 10px", fontSize: 12,
+  };
+
+  const typeColors = {
+    "Farm Event":       { bg: "#EBF7D8", text: "#1A3D10", border: "#6CBF2E" },
+    "Market Event":     { bg: "#FBF0A0", text: "#2A1E00", border: "#F2D024" },
+    "Team Milestone":   { bg: "#EBF7D8", text: "#2A5E18", border: "#3D8A20" },
+    "External Factor":  { bg: "#F4F4F0", text: "#1C1C18", border: "#D8D8CE" },
+    "Context Note":     { bg: "#F4F4F0", text: "#8A8A7A", border: "#D8D8CE" },
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+        <div>
+          <h2 style={{ color: "var(--text-heading)", fontFamily: "'DM Serif Display', Georgia, serif", margin: "0 0 4px", fontSize: 18 }}>
+            Company Events
+          </h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: 12, margin: 0 }}>
+            Business impact not attributed to either founder. {events.length} event{events.length !== 1 ? "s" : ""} logged.
+          </p>
+        </div>
+        <button
+          onClick={onAdd}
+          style={{ background: "#6CBF2E", border: "none", color: "#1A3D10", borderRadius: 7, padding: "8px 16px", cursor: "pointer", fontSize: 12, fontWeight: 700, flexShrink: 0 }}
+        >
+          + Log Event
+        </button>
+      </div>
+
+      {/* Info banner */}
+      <div style={{ background: "var(--bg-surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 11, color: "var(--text-secondary)" }}>
+        Use this log for: farm outputs, yield results, market price shifts, weather events, team milestones, supplier changes, or any outcome that affects the business but isn't a specific founder achievement.
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search events…"
+          style={{ flex: 1, minWidth: 160, background: "var(--bg-input)", border: "1px solid var(--border)", color: "var(--text-primary)", borderRadius: 6, padding: "7px 12px", fontSize: 13 }} />
+        <select value={fType} onChange={e => setFType(e.target.value)} style={sel}>
+          <option value="ALL">All Types</option>
+          {COMPANY_EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "50px 0" }}>
+          <div style={{ color: "var(--border)", fontSize: 36, marginBottom: 8 }}>◎</div>
+          <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>
+            {events.length === 0 ? "No company events yet. Tap + Log Event to start." : "No events match your filters."}
+          </div>
+        </div>
+      ) : filtered.map(e => {
+        const [open, setOpen] = useState(false);
+        const tc = typeColors[e.type] || typeColors["Context Note"];
+        return (
+          <div key={e.id} style={{
+            background: "var(--entry-card-bg)", border: "1px solid var(--entry-card-border)",
+            borderRadius: 10, marginBottom: 8, overflow: "hidden",
+          }}>
+            <div style={{ padding: "12px 16px", cursor: "pointer" }} onClick={() => setOpen(!open)}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
+                    <span style={{ background: tc.bg, color: tc.text, border: `1px solid ${tc.border}`, borderRadius: 4, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>
+                      {e.type}
+                    </span>
+                    {e.loggedBy && (
+                      <span style={{ color: "var(--text-secondary)", fontSize: 10 }}>by {e.loggedBy}</span>
+                    )}
+                  </div>
+                  <div style={{ color: "var(--text-heading)", fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 15, fontWeight: 600 }}>
+                    {e.title}
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: 12 }}>
+                  <span style={{ color: "var(--text-secondary)", fontSize: 11 }}>{fmt(e.date)}</span>
+                  <span style={{ color: "var(--border)", fontSize: 14 }}>{open ? "▲" : "▼"}</span>
+                </div>
+              </div>
+            </div>
+
+            {open && (
+              <div style={{ padding: "0 16px 14px", borderTop: "1px solid var(--border)" }}>
+                {e.summary && (
+                  <div style={{ marginTop: 10, marginBottom: 8 }}>
+                    <div style={{ color: "var(--text-secondary)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>What Happened</div>
+                    <div style={{ color: "var(--text-primary)", fontSize: 13, lineHeight: 1.65 }}>{e.summary}</div>
+                  </div>
+                )}
+                {e.metrics && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ color: "var(--text-secondary)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Metrics</div>
+                    <div style={{ color: "var(--text-primary)", fontSize: 13 }}>{e.metrics}</div>
+                  </div>
+                )}
+                {e.strategicNotes && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ color: "var(--text-secondary)", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 3 }}>Strategic Notes</div>
+                    <div style={{ color: "#1A3D10", fontSize: 13, lineHeight: 1.65 }}>{e.strategicNotes}</div>
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button onClick={() => onEdit(e)} style={{ background: "none", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 5, padding: "5px 14px", cursor: "pointer", fontSize: 12 }}>Edit</button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`Delete "${e.title}"? This cannot be undone.`)) onDelete(e.id);
+                    }}
+                    style={{ background: "none", border: "1px solid #D8D8CE", color: "#904040", borderRadius: 5, padding: "5px 14px", cursor: "pointer", fontSize: 12 }}
+                  >Delete</button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SkillsTrackerView({ entries, onEdit, onDelete }) {
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [search, setSearch] = useState("");
@@ -2264,6 +2528,9 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
   const [activeUser, setActiveUser] = useState(initialActiveUser || "bukola");
   const [entries, setEntries] = useState([]);
   const [companyEntries, setCompanyEntries] = useState([]);
+  const [companyEvents, setCompanyEvents] = useState([]);
+  const [showEventForm, setShowEventForm] = useState(false);
+  const [editEvent, setEditEvent] = useState(null);
   const [customTags, setCustomTags] = useState([]);
   const [allSkills, setAllSkills] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2301,11 +2568,17 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
             if (!error && data) {
               // Tag each entry with its owner and merge
               const all = data.map(r => ({ ...r.data, _userId: r.user_id }));
-              setCompanyEntries(all);
+              // Also load company events and merge them in with _isEvent flag
+              const evtResult = await supabase.from('company_events').select('*').order('updated_at', { ascending: false });
+              const evts = (evtResult.data || []).map(r => ({ ...r.data, _isEvent: true, _userId: 'company' }));
+              setCompanyEntries([...all, ...evts]);
             }
           } catch(e) { console.error('Company load:', e); }
         };
         loadCompany();
+        // Load company events
+        const eventsData = await dbLoadCompanyEvents();
+        setCompanyEvents(eventsData || []);
       } catch(e) {
         console.error('Load failed:', e);
       } finally {
@@ -2342,6 +2615,18 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
     const updated = entries.filter(e => e.id !== id);
     setEntries(updated);
     await dbDeleteEntry(userId, id);
+  };
+
+  const handleSaveEvent = async (event) => {
+    const idx = companyEvents.findIndex(e => e.id === event.id);
+    const updated = idx >= 0 ? companyEvents.map(e => e.id === event.id ? event : e) : [event, ...companyEvents];
+    setCompanyEvents(updated);
+    await dbSaveCompanyEvent(event);
+  };
+
+  const handleDeleteEvent = async (id) => {
+    setCompanyEvents(companyEvents.filter(e => e.id !== id));
+    await dbDeleteCompanyEvent(id);
   };
 
   const filtered = entries.filter(e => {
@@ -2429,6 +2714,7 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
             {activeUser === "bukola" && (
               <button style={navStyle("skills")} onClick={() => setView("skills")}>◈ Skills</button>
             )}
+            <button style={navStyle("events")} onClick={() => setView("events")}>🏢 Events</button>
             <button style={navStyle("matrix")} onClick={() => setView("matrix")}>⬡ RACI Matrix</button>
             <button
               onClick={() => setShowReport(true)}
@@ -2566,6 +2852,15 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
           </>
         )}
 
+        {view === "events" && (
+          <CompanyEventsView
+            events={companyEvents}
+            onAdd={() => { setEditEvent(null); setShowEventForm(true); }}
+            onEdit={event => { setEditEvent(event); setShowEventForm(true); }}
+            onDelete={handleDeleteEvent}
+          />
+        )}
+
         {view === "skills" && activeUser === "bukola" && (
           <SkillsTrackerView
             entries={entries}
@@ -2594,6 +2889,16 @@ function BILApp({ activeUser: initialActiveUser, onLogout, darkMode, onToggleDar
             allCustomTags={customTags}
             allSkills={allSkills}
             showSkills={activeUser === "bukola"}
+          />
+        </Modal>
+      )}
+
+      {showEventForm && (
+        <Modal onClose={() => { setShowEventForm(false); setEditEvent(null); }} wide>
+          <CompanyEventForm
+            initial={editEvent}
+            onSave={handleSaveEvent}
+            onClose={() => { setShowEventForm(false); setEditEvent(null); }}
           />
         </Modal>
       )}
